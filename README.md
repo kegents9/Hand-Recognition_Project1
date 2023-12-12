@@ -10,7 +10,7 @@ This project requires installation of the third-party packages shown as below:
    reference: https://pypi.org/project/opencv-python/ **\
    installation: `pip install opencv-python`
 3. **mediapipe**\
-   reference: https://pypi.org/project/face-recognition/ **\
+   reference: https://pypi.org/project/mediapipe/ **\
    installation: `pip install mediapipe`
 
 
