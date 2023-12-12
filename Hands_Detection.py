@@ -1,52 +1,39 @@
 import cv2
 import mediapipe as mp
-import numpy as np
+import time
 import math
+import numpy as np
+
+cap = cv2.VideoCapture(0)
 
 mp_drawing = mp.solutions.drawing_utils
 mp_hands = mp.solutions.hands
-'''
-# For static images:
-with mp_hands.Hands(
-    static_image_mode=True,
-    max_num_hands=2,
-    min_detection_confidence=0.5) as hands:
-  for idx, file in enumerate(file_list):
-    # Read an image, flip it around y-axis for correct handedness output (see
-    # above).
-    image = cv2.flip(cv2.imread(file), 1)
-    # Convert the BGR image to RGB before processing.
-    results = hands.process(cv2.cvtColor(image, cv2.COLOR_BGR2RGB))
 
-    # Print handedness and draw hand landmarks on the image.
-    print('Handedness:', results.multi_handedness)
-    if not results.multi_hand_landmarks:
-      continue
-    image_height, image_width, _ = image.shape
-    annotated_image = image.copy()
-    for hand_landmarks in results.multi_hand_landmarks:
-      print('hand_landmarks:', hand_landmarks)
-      print(
-          f'Index finger tip coordinates: (',
-          f'{hand_landmarks.landmark[mp_hands.HandLandmark.INDEX_FINGER_TIP].x * image_width}, '
-          f'{hand_landmarks.landmark[mp_hands.HandLandmark.INDEX_FINGER_TIP].y * image_height})'
-      )
-      mp_drawing.draw_landmarks(
-          annotated_image, hand_landmarks, mp_hands.HAND_CONNECTIONS)
-    cv2.imwrite(
-        '/tmp/annotated_image' + str(idx) + '.png', cv2.flip(annotated_image, 1))
-'''
-# For webcam input:
+# while True:
+#     success, img = cap.read()
+#     imgRGB = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
+#     results = mp_hands.process(imgRGB)
+#     xList = []
+#     yList = []
+#     lmList = []
+    
+#     # print(results.multi_hand_landmarks)
+#     for handLms in results.multi_hand_landmarks:
+#         print(handLms)
+
 cap = cv2.VideoCapture(0, cv2.CAP_DSHOW)
 with mp_hands.Hands(
     min_detection_confidence=0.75,
     min_tracking_confidence=0.75) as hands:
-  while cap.isOpened():
+  if cap.isOpened():
     success, image = cap.read()
-
     image_size=image.shape
     image_height=image_size[0]
     image_width=image_size[1]
+    print('size', image_size, '\n', 'height', image_height, '\n', 'width', image_width)
+
+  while cap.isOpened():
+    success, image = cap.read()
 
     if not success:
       print("Ignoring empty camera frame.")
@@ -67,16 +54,18 @@ with mp_hands.Hands(
 
     # print(len(results))
 
-    # cv2.putText(img, text, org, fontFace, fontScale, color[, thickness[, lineType[, bottomLeftOrigin]]])
+    # cv2.putText(img, text, (org), fontFace, fontScale, color[, thickness[, lineType[, bottomLeftOrigin]]])
     hint = 'press esc to leave'
-    cv2.putText(image,hint,
-          (int(image_width*0.4),int(image_height*0.08)),cv2.FONT_HERSHEY_SIMPLEX,1,
-          (255,0,0),2,cv2.LINE_AA)
+    imgx, imgy, imgw, imgh = 0, 0, int(image_width*0.475), int(image_height*0.08)
+    cv2.rectangle(image, (imgx, imgx), (imgx + imgw, imgy + imgh), (0,0,0), -1)
+    cv2.putText(image,hint,  (0,int(image_height*0.06)), 
+                cv2.FONT_HERSHEY_SIMPLEX, 1,
+          (0,95,255),2,cv2.LINE_AA)
 
     if results.multi_hand_landmarks:
-      print('**********************************************************')
-      print(len(results.multi_hand_landmarks))
-      print('**********************************************************')
+    #   print('**********************************************************')
+    #   print(len(results.multi_hand_landmarks))
+    #   print('**********************************************************')
       
       for hand_landmarks in results.multi_hand_landmarks:
         THUMB_TIP_X = int(hand_landmarks.landmark[mp_hands.HandLandmark.THUMB_TIP].x * image_width)
@@ -94,21 +83,30 @@ with mp_hands.Hands(
         PINKY_TIP_X = int(hand_landmarks.landmark[mp_hands.HandLandmark.PINKY_TIP].x * image_width)
         PINKY_TIP_Y = int(hand_landmarks.landmark[mp_hands.HandLandmark.PINKY_TIP].y * image_height)
 
+        # POSITION OF THUMB      
         p_T=np.array([THUMB_TIP_X,THUMB_TIP_Y])
+        # POSITION OF INDEX FINGER
         p_I=np.array([INDEX_TIP_X,INDEX_TIP_Y])
+        # POSITION OF MIDDLE FINGER
         p_M=np.array([MID_TIP_X,MID_TIP_Y])
+        # POSITION OF RING FINGER
         p_R=np.array([RING_TIP_X,RING_TIP_Y])
+        # POSITION OF PINKY
         p_P=np.array([PINKY_TIP_X,PINKY_TIP_Y])
         
+        # DISTANCE FROM THUMB TO INDEX FINGER
         D_T_I = p_T-p_I
         DTI = int(math.hypot(D_T_I[0],D_T_I[1]))
 
+        # DISTANCE FROM THUMB TO MIDDLE FINGER
         D_T_M = p_T-p_M
         DTM = int(math.hypot(D_T_M[0],D_T_M[1]))
 
+        # DISTANCE FROM THUMB TO RING FINGER
         D_T_R = p_T-p_R
         DTR = int(math.hypot(D_T_R[0],D_T_R[1]))
 
+        # DISTANCE FROM THUMB TO PINKY FINGER
         D_T_P = p_T-p_P
         DTP = int(math.hypot(D_T_P[0],D_T_P[1]))
 
@@ -119,9 +117,9 @@ with mp_hands.Hands(
         elif (DTP<=50) and (DTR>=100) and (DTI>=100) and (DTM>=100):
           V = 3
         elif (DTP>=50) and (DTR>=100) and (DTI>=100) and (DTM>=100):
-          if (DTP<120):
+          if (DTP<180) and (DTM>DTI):
             V = 4
-          elif (DTP>=120):
+          elif (DTP>=180):
             V = 5
         else:
           V = 0
@@ -130,108 +128,57 @@ with mp_hands.Hands(
           text = 'one'
           cv2.putText(image,
           text,
-          (int(image_width*0.3),int(image_height*0.08)),cv2.FONT_HERSHEY_SIMPLEX,1,
+          (int(image_width*0.75),int(image_height*0.08)),cv2.FONT_HERSHEY_SIMPLEX,1,
           (0,255,0),6,cv2.LINE_AA)
 
           cv2.putText(image,
           text,
-          (int(image_width*0.3),int(image_height*0.08)),cv2.FONT_HERSHEY_SIMPLEX,1,
+          (int(image_width*0.75),int(image_height*0.08)),cv2.FONT_HERSHEY_SIMPLEX,1,
           (0,0,0),2,cv2.LINE_AA)
         elif(V==2):
           text = 'two'
           cv2.putText(image,
           text,
-          (int(image_width*0.3),int(image_height*0.08)),cv2.FONT_HERSHEY_SIMPLEX,1,
+          (int(image_width*0.75),int(image_height*0.08)),cv2.FONT_HERSHEY_SIMPLEX,1,
           (0,255,0),6,cv2.LINE_AA)
 
           cv2.putText(image,
           text,
-          (int(image_width*0.3),int(image_height*0.08)),cv2.FONT_HERSHEY_SIMPLEX,1,
+          (int(image_width*0.75),int(image_height*0.08)),cv2.FONT_HERSHEY_SIMPLEX,1,
           (0,0,0),2,cv2.LINE_AA)
         elif(V==3):
           text = 'three'
           cv2.putText(image,
           text,
-          (int(image_width*0.3),int(image_height*0.08)),cv2.FONT_HERSHEY_SIMPLEX,1,
+          (int(image_width*0.75),int(image_height*0.08)),cv2.FONT_HERSHEY_SIMPLEX,1,
           (0,255,0),6,cv2.LINE_AA)
 
           cv2.putText(image,
           text,
-          (int(image_width*0.3),int(image_height*0.08)),cv2.FONT_HERSHEY_SIMPLEX,1,
+          (int(image_width*0.75),int(image_height*0.08)),cv2.FONT_HERSHEY_SIMPLEX,1,
           (0,0,0),2,cv2.LINE_AA)
         elif(V==4):
           text = 'four'
           cv2.putText(image,
           text,
-          (int(image_width*0.3),int(image_height*0.08)),cv2.FONT_HERSHEY_SIMPLEX,1,
+          (int(image_width*0.75),int(image_height*0.08)),cv2.FONT_HERSHEY_SIMPLEX,1,
           (0,255,0),6,cv2.LINE_AA)
 
           cv2.putText(image,
           text,
-          (int(image_width*0.3),int(image_height*0.08)),cv2.FONT_HERSHEY_SIMPLEX,1,
+          (int(image_width*0.75),int(image_height*0.08)),cv2.FONT_HERSHEY_SIMPLEX,1,
           (0,0,0),2,cv2.LINE_AA)
         elif(V==5):
           text = 'five'
           cv2.putText(image,
           text,
-          (int(image_width*0.3),int(image_height*0.08)),cv2.FONT_HERSHEY_SIMPLEX,1,
+          (int(image_width*0.75),int(image_height*0.08)),cv2.FONT_HERSHEY_SIMPLEX,1,
           (0,255,0),6,cv2.LINE_AA)
 
           cv2.putText(image,
           text,
-          (int(image_width*0.3),int(image_height*0.08)),cv2.FONT_HERSHEY_SIMPLEX,1,
+          (int(image_width*0.75),int(image_height*0.08)),cv2.FONT_HERSHEY_SIMPLEX,1,
           (0,0,0),2,cv2.LINE_AA)
-        '''else:
-          text = 'nothing'
-          cv2.putText(image,
-          text,
-          (int(image_width*0.6),int(image_height*0.08)),cv2.FONT_HERSHEY_SIMPLEX,1,
-          (0,255,0),6,cv2.LINE_AA)
-
-          cv2.putText(image,
-          text,
-          (int(image_width*0.6),int(image_height*0.08)),cv2.FONT_HERSHEY_SIMPLEX,1,
-          (0,0,0),2,cv2.LINE_AA)'''
-
-        '''if (DTP>=50) and (DTR>=50) and (DTI<=30) and (DTM>=50):
-          O = 1
-        else:
-          O = 0
-
-        if(O==1):
-          text = 'ok'
-          cv2.putText(image,
-          text,
-          (int(image_width*0.6),int(image_height*0.08)),cv2.FONT_HERSHEY_SIMPLEX,1,
-          (0,255,0),6,cv2.LINE_AA)
-
-          cv2.putText(image,
-          text,
-          (int(image_width*0.6),int(image_height*0.08)),cv2.FONT_HERSHEY_SIMPLEX,1,
-          (0,0,0),2,cv2.LINE_AA)'''
-
-        ''' 
-        distance_text = 'Distance=' + str(int(math.hypot(p3[0],p3[1])))
-
-        
-        cv2.putText(image,
-          str(i),
-          (THUMB_TIP_X, THUMB_TIP_Y),cv2.FONT_HERSHEY_SIMPLEX,1,
-          (0,255,255),6,cv2.LINE_AA)
-
-        cv2.putText(image,
-          str(i),
-          (THUMB_TIP_X, THUMB_TIP_Y),cv2.FONT_HERSHEY_SIMPLEX,1,
-          (0,0,0),2,cv2.LINE_AA)          
-        
-
-        cv2.line(image,
-          (THUMB_TIP_X, THUMB_TIP_Y),
-          (INDEX_FINGER_TIP_X, INDEX_FINGER_TIP_Y),
-          (0, 0, 255), 8)
-        '''
-
-        
 
         mp_drawing.draw_landmarks(
             image, hand_landmarks, mp_hands.HAND_CONNECTIONS)
