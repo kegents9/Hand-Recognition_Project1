@@ -27,10 +27,12 @@ with mp_hands.Hands(
     min_tracking_confidence=0.75) as hands:
   if cap.isOpened():
     success, image = cap.read()
+    print(success, image)
     image_size=image.shape
     image_height=image_size[0]
     image_width=image_size[1]
     print('size', image_size, '\n', 'height', image_height, '\n', 'width', image_width)
+    # print(image_size)
 
   while cap.isOpened():
     success, image = cap.read()
